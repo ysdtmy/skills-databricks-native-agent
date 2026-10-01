@@ -68,6 +68,9 @@ python .agents/skills/databricks-native-agent/scripts/check_environment.py
      + grants, UC privileges), and what happens when access is missing. Name any resource where you propose the
      app SP instead (e.g. model-serving embeddings, checkpoint/memory stores) and why. See "Resource
      authentication (OBO by default)" below.
+   - **Who/what will call the agent**: people in the Apps UI, scripts or other systems via the API (M2M service
+     principal), other Databricks Apps. This decides which identity OBO resources see (see "Calling the deployed
+     agent from outside" in Phase 5).
    - **Assumptions & defaults you picked** (project name, profile, model, thresholds), each marked as changeable.
    - **Steps & side effects**: what will be created locally vs. in the workspace (stores, apps, grants), and
      what is deferred until after local tests (deployment).
@@ -263,11 +266,36 @@ agentbricks deployments get agent-bricks-<app_name>
 # View live production logs
 agentbricks deployments logs agent-bricks-<app_name> --follow
 
-# Invoke live cloud endpoint
+# Invoke live cloud endpoint (Databricks Apps requires an OAuth bearer token; see next section)
+TOKEN=$(databricks auth token --profile <profile> -o json | jq -r .access_token)
 curl -sS -X POST https://<databricks-apps-url>/api/invocations \
-  -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
   -d '{"id":"'$(uuidgen)'","input":{"session_id":"test-session","messages":[{"role":"user","content":"Hello"}]}}'
 ```
+
+### Calling the deployed agent from outside (API / other systems)
+
+The deployed agent is an HTTP API: `POST https://<app>-<id>.<region>.databricksapps.com/api/invocations`
+with `{"id": "<new UUID per call>", "input": {"session_id": "...", "messages": [...]}}`. Reuse a `session_id` to
+continue a conversation; reusing an `id` is idempotent (no double execution). The answer is in
+`output.output[-1].content`. Optional `stream: true` (SSE) and `background: true` (poll `status_url`) are described
+in the generated project README. `agentbricks endpoint invoke` also works.
+
+Authentication is an **OAuth 2.0 bearer token** ([docs](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/connect-local)):
+
+| Caller | How to get the token | Identity the app sees |
+| :--- | :--- | :--- |
+| A person / local script | `databricks auth token --profile <p>` (U2M; CLI tokens carry `all-apis`) | that user |
+| External system / batch | service principal **M2M OAuth** (client id + secret, e.g. `WorkspaceClient(host, client_id, client_secret).config.authenticate()`) | the service principal |
+| Another Databricks App | its own service principal, automatically | that app's service principal |
+
+- The token's scopes must be a **superset of the app's `user_api_scopes`**, otherwise 401/403. Tokens last 1 hour.
+- PAT support is not documented for apps; use OAuth.
+- **OBO interaction (important)**: with OBO resources (e.g. Lakebase) the agent acts as the *caller*. A service
+  principal caller therefore has no Postgres role / UC grants unless you give it some, and gets `ACCESS_DENIED`.
+  Decide this in the Phase 1 plan: grant the calling SP what it needs, or accept that those resources are
+  unavailable to machine callers. (Inferred from the runtime's forwarded-token handling; not tested with M2M.)
+- Verify an external call with the same kind of token your callers will use (CLI token != browser token != SP token).
 
 ---
 

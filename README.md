@@ -82,8 +82,6 @@ databricks-native-agent/                      # <skill-dir>
 └── references/                   # CLI リファレンス、agent.toml 仕様、ツール／セキュリティ、テスト・デプロイガイド
 ```
 
-このスキルで作った例（元のリポジトリではスキルの隣にあります）: `dataai-knowledge-agent/`（Lakebase のナレッジを優先し、Web 検索にフォールバック。OBO、メモリ、MLflow トレース付き）と `databricks-smart-agent/`。
-
 ## 設計上の要点
 
 - **OBO を基本とします。** リソースはエンドユーザーとしてアクセスするため、UC や Postgres の権限がユーザーごとに効き、アプリのサービスプリンシパルにデータへの常時権限を与えません。アプリのサービスプリンシパルを使うのは共有インフラ（埋め込みエンドポイントや実行状態のストアなど）だけで、どこで使うかは方針の提示時に明示します。権限が足りない場合は、クラッシュさせずに `ACCESS_DENIED` として（使った身元と理由を添えて）ユーザーに返します。
@@ -100,10 +98,6 @@ agentbricks --profile <profile> dev --app-port 8010          # プロジェク�
 python scripts/run_local_api_test.py \
   --url http://localhost:8010 --project <project_dir> --custom-query "あなたの業務の質問"
 ```
-
-## コントリビュート
-
-ワークフローのルールは `SKILL.md` と `references/` だけに書きます。リポジトリ直下の `CLAUDE.md`（このフォルダの外）は、開発者向けのメモで、配布するスキルには含まれません。スクリプトを変更したら、上のコマンドで実際のプロジェクトに対して検証してください。
 
 ---
 
@@ -191,9 +185,6 @@ databricks-native-agent/                      # <skill-dir>
 └── references/                   # CLI reference, agent.toml spec, tools/security guide, test & deploy guide
 ```
 
-Examples produced with the skill (kept next to the skill in the source repo): `dataai-knowledge-agent/` (Lakebase knowledge base first,
-web search as fallback, OBO access, memory + MLflow tracing) and `databricks-smart-agent/`.
-
 ## Design choices worth knowing
 
 - **OBO by default.** Resources are accessed as the end user, so UC / Postgres grants apply per user and the app
@@ -204,7 +195,7 @@ web search as fallback, OBO access, memory + MLflow tracing) and `databricks-sma
   `run_local_api_test.py --project <dir>` checks the port owner and the reported tools first.
 - **Known pitfalls are encoded** in the skill's Gotchas table: port collisions, `agentbricks dev` and `.venv`,
   `--profile` only accepted globally (`agentbricks --profile <p> deploy ...`), MCP `id` fields rejected by Claude,
-  session history poisoned by a crashed tool call, scope re-consent after adding scopes, 30-character app-name limit.
+  session history poisoned by a crashed tool call, scope re-consent after adding scopes, the 30-character app-name limit, among others.
 
 ## Run the checks manually
 
@@ -216,8 +207,3 @@ agentbricks --profile <profile> dev --app-port 8010          # in the project di
 python scripts/run_local_api_test.py \
   --url http://localhost:8010 --project <project_dir> --custom-query "your domain question"
 ```
-
-## Contributing
-
-`SKILL.md` and `references/` are the only place for workflow rules; the repository-level `CLAUDE.md` (outside this folder) is a contributor note, not part
-of the distributed skill. Verify script changes against a real project with the commands above.

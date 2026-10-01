@@ -1,0 +1,23 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Agent Bricks / Databricks local state (traces, sync snapshots)
+.agentbricks/
+.databricks/
+mlruns/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
